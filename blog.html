@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benchmarking Agents for Cap Table Modeling</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --soft: #555;
+    --muted: #888;
+    --bg: #fafafa;
+    --card: #fff;
+    --rule: #e5e5e5;
+    --link: #1f6feb;
+    --accent: #1f77b4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, "SF Pro Text", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.65;
+    margin: 0;
+    padding: 0;
+    font-size: 17px;
+  }
+  article {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 64px 24px 96px;
+    background: var(--card);
+  }
+  .byline {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: 36px;
+    line-height: 1.2;
+    font-weight: 700;
+    margin: 0 0 16px;
+    letter-spacing: -0.02em;
+  }
+  .lede {
+    color: var(--soft);
+    font-size: 18px;
+    margin-bottom: 40px;
+    line-height: 1.5;
+  }
+  h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 56px 0 20px;
+    letter-spacing: -0.01em;
+    border-top: 1px solid var(--rule);
+    padding-top: 40px;
+  }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 32px 0 12px;
+  }
+  p, ul, ol {
+    margin: 0 0 18px;
+  }
+  ul, ol { padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(31, 111, 235, 0.3);
+  }
+  a:hover { border-bottom-color: var(--link); }
+  code {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    background: #f5f5f7;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #f5f5f7;
+    padding: 16px 20px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+  }
+  table {
+    border-collapse: collapse;
+    margin: 24px 0;
+    width: 100%;
+    font-size: 15px;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-weight: 600;
+    background: #fafafa;
+    color: var(--soft);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  td strong { color: var(--accent); }
+
+  /* Denser variant for the survey table */
+  table.dense {
+    font-size: 14px;
+    margin: 18px 0;
+  }
+  table.dense th, table.dense td {
+    padding: 6px 10px;
+  }
+  table.dense th:nth-child(2),
+  table.dense td:nth-child(2) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    width: 56px;
+    color: var(--soft);
+  }
+
+  /* Charts */
+  figure {
+    margin: 32px -32px;
+    text-align: center;
+  }
+  figure img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  figcaption {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* Pull quote */
+  blockquote {
+    margin: 32px 0;
+    padding: 20px 24px;
+    border-left: 3px solid var(--accent);
+    background: #f5f9fd;
+    color: var(--ink);
+    font-size: 17px;
+    border-radius: 0 4px 4px 0;
+  }
+  blockquote p { margin: 0; }
+
+  /* Inline emphasis */
+  em { font-style: italic; }
+  strong { font-weight: 700; }
+
+  /* Inputs / Outputs graphic */
+  .io-graphic {
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+    margin: 28px 0 32px;
+  }
+  .io-card {
+    flex: 1;
+    background: #fff;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .io-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--muted);
+  }
+  .io-card-input .io-label { color: #1f6feb; }
+  .io-card-output .io-label { color: var(--accent); }
+  .io-item { margin-bottom: 12px; }
+  .io-item:last-child { margin-bottom: 0; }
+  .io-file {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .io-desc {
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: 8px;
+  }
+  .io-sublist {
+    margin: 6px 0 0;
+    padding-left: 16px;
+    color: var(--soft);
+    font-size: 13px;
+    list-style: none;
+  }
+  .io-sublist li {
+    margin: 0;
+    padding: 1px 0;
+    position: relative;
+  }
+  .io-sublist li::before {
+    content: "·";
+    position: absolute;
+    left: -10px;
+    color: var(--muted);
+  }
+  .io-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: var(--muted);
+    font-weight: 300;
+    width: 18px;
+    flex-shrink: 0;
+  }
+  .io-outputs {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 14px;
+  }
+  .io-outputs li {
+    padding: 5px 0;
+    border-bottom: 1px dotted var(--rule);
+    color: var(--ink);
+  }
+  .io-outputs li:last-child { border-bottom: none; }
+  .io-outputs li span {
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: 4px;
+  }
+  .io-foot {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  @media (max-width: 640px) {
+    .io-graphic { flex-direction: column; gap: 8px; }
+    .io-arrow { transform: rotate(90deg); width: auto; padding: 0; }
+  }
+
+  /* Closing italic block */
+  .footer-note {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    color: var(--muted);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 720px) {
+    article { padding: 32px 20px 64px; }
+    h1 { font-size: 28px; }
+    .lede { font-size: 16px; }
+    figure { margin: 24px -8px; }
+    table { font-size: 14px; }
+    th, td { padding: 8px 10px; }
+  }
+
+  /* ============ REVIEW MODE ============ */
+  #review-bar {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  #review-bar button {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  #review-bar button:hover { background: #f0f0f0; }
+  #review-bar button.active { background: var(--accent); color: white; border-color: var(--accent); }
+  #review-bar #count-badge {
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 12px;
+    color: var(--soft);
+    font-weight: 600;
+    min-width: 26px;
+    text-align: center;
+  }
+
+  #comment-popup {
+    position: absolute;
+    z-index: 999;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    padding: 6px;
+    display: none;
+    gap: 4px;
+  }
+  #comment-popup.show { display: flex; }
+  #comment-popup button {
+    background: white;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink);
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  #comment-popup button:hover { background: #f0f4f8; }
+
+  /* Annotated text styles */
+  .anno {
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .anno-comment {
+    background: #fff3a0;
+    border-bottom: 2px solid #e8c400;
+  }
+  .anno-comment:hover { background: #ffe676; }
+  .anno-delete {
+    background: #ffcdcd;
+    text-decoration: line-through;
+    text-decoration-color: #c00;
+  }
+  .anno-insert {
+    background: #c8e6c9;
+    color: #1b5e20;
+    border-bottom: 2px solid #2e7d32;
+  }
+
+  /* Sidebar */
+  #comments-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 360px;
+    height: 100vh;
+    background: white;
+    border-left: 1px solid var(--rule);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.04);
+    overflow-y: auto;
+    padding: 70px 20px 24px;
+    z-index: 998;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+  }
+  #comments-sidebar.open { transform: translateX(0); }
+  body.sidebar-open article { margin-right: 0; padding-right: 24px; }
+  #comments-sidebar h3 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .comment-card {
+    background: #fffbe6;
+    border-left: 3px solid #e8c400;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border-radius: 0 4px 4px 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    cursor: pointer;
+  }
+  .comment-card.delete-card { background: #ffe9e9; border-left-color: #c00; }
+  .comment-card.insert-card { background: #e8f5e9; border-left-color: #2e7d32; }
+  .comment-card .anchor-text {
+    color: var(--soft);
+    font-style: italic;
+    font-size: 12px;
+    border-bottom: 1px dashed #ddd;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+    max-height: 32px;
+    overflow: hidden;
+  }
+  .comment-card .body { margin: 0; }
+  .comment-card .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 11px;
+  }
+  .comment-card .actions a {
+    color: var(--muted);
+    text-decoration: underline;
+    cursor: pointer;
+    border: none;
+  }
+  .comment-card .actions a:hover { color: var(--ink); }
+
+  body.review-on { padding-right: 0; }
+
+  @media print {
+    #review-bar, #comment-popup, #comments-sidebar { display: none !important; }
+    .anno { background: transparent !important; border: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<article>
+
+<div class="byline">By Acephalt + DealGlass</div>
+
+<h1>Benchmarking Agents for Cap Table Modeling</h1>
+
+<p class="lede">We asked 9 venture investors what spreadsheet task wastes the most time. 8 said cap tables, pref-stack waterfalls, or some model derived from one of those.</p>
+
+<table class="dense">
+<thead><tr><th>Role</th><th>YoE</th><th>Pain point</th></tr></thead>
+<tbody>
+<tr><td>Principal</td><td>10</td><td>"All modeling derived from cap tables"</td></tr>
+<tr><td>Associate</td><td>7</td><td>Pref stack liquidation / waterfall analysis</td></tr>
+<tr><td>Associate</td><td>5</td><td>Pref stack modeling, customer revenue rollups</td></tr>
+<tr><td>Associate</td><td>4</td><td>Exit analysis, pref stack at liquidation</td></tr>
+<tr><td>Associate</td><td>3</td><td>Cap tables and waterfalls, especially with SAFEs</td></tr>
+<tr><td>Associate</td><td>3</td><td>Connecting accounts in waterfall formulas</td></tr>
+<tr><td>Analyst</td><td>2</td><td>Cap tables, ownership modeling (ESOP, valuation, venture debt, SAFEs)</td></tr>
+<tr><td>Analyst</td><td>2</td><td>"Pref stack / waterfall"</td></tr>
+<tr><td>Analyst</td><td>1</td><td>Trust + hallucination concerns</td></tr>
+</tbody>
+</table>
+
+<p style="font-size: 13px; color: var(--muted); font-style: italic; margin-top: -12px;">Respondents anonymized to protect candor; roles and tenure accurate.</p>
+
+<p>The pattern was consistent. Cap tables are the central artifact of every priced round, every diligence cycle, every fund-return calculation. They're also where deal teams burn hours.</p>
+
+<p>The public benchmark for spreadsheet agents, <a href="https://dealglass.com/tetra">SpreadsheetBench Verified</a>, scores agents on 400 atomic operations averaging about 2 minutes each. We needed something closer to actual diligence work: one dense end-to-end deal model, built from scratch, with formulas wired all the way through. So we built it.</p>
+
+<p>We constructed a synthetic Series F deal, defined 167 ground-truth output cells, and ran three agents against it, ten times each. We measured strict cell accuracy, wall-clock time, and one property other benchmarks don't test: audit-readiness. Whether the output is a live model that recomputes when you change an input, or a static report dressed up as a model.</p>
+
+<p>Acephalt is integrating <a href="https://dealglass.com/tetra">Tetra from DealGlass</a> into our AI due-diligence product. This post is what we found before making that decision.</p>
+
+<h2>One model, no second pass</h2>
+
+<p>Take a single output cell from the deal scenario. At the $700M exit, what fraction of the company does our $10M check need to own to clear a 3× return?</p>
+
+<p>The answer is 2.10%.</p>
+
+<p>Tetra writes the cell as <code>=$C$7/C14</code>. Target proceeds divided by F-class waterfall residual. Two-formula trace. Pass.</p>
+
+<p>GPT-5.5 builds a 130-row × 2,121-column iteration ladder. 259,920 formulas. It collapses with <code>INDEX($AG$3:$AG$130, MATCH(1, $HE$3:$HE$130, 0))</code> to pick a row matching a target condition. The arithmetic inside the table is internally consistent. The row it lands on returns 9.96%. Five times the truth.</p>
+
+<p>A $10M check sized at five times the right target moves a fund's allocation decision in the wrong direction. That is the cost of getting one cell wrong.</p>
+
+<p>Verifying makes it worse. With Tetra's two-formula chain, you trace the dependency in two seconds. With GPT-5.5's 259,920-formula model, you can't. There is no "verify cell-by-cell" path through 260,000 cells. The analyst has two choices: trust the output, or rebuild the model.</p>
+
+<p>The question this benchmark actually answers: which AI produces output an analyst can take to a principal without rebuilding it.</p>
+
+<h2>What we measured</h2>
+
+<p>What the agent gets, and what we score:</p>
+
+<div class="io-graphic">
+  <div class="io-card io-card-input">
+    <div class="io-label">Inputs</div>
+    <div class="io-item">
+      <span class="io-file">cap_table.xlsx</span>
+      <span class="io-desc">Carta export</span>
+      <ul class="io-sublist">
+        <li>Stakeholders</li>
+        <li>Securities</li>
+        <li>Notes</li>
+        <li>RoundTerms</li>
+      </ul>
+    </div>
+    <div class="io-item">
+      <span class="io-file">prompt.md</span>
+      <span class="io-desc">deal terms</span>
+    </div>
+  </div>
+  <div class="io-arrow">→</div>
+  <div class="io-card io-card-output">
+    <div class="io-label">Outputs</div>
+    <ul class="io-outputs">
+      <li>Assumptions</li>
+      <li>Pro-Forma</li>
+      <li>Waterfall <span>5 exits</span></li>
+      <li>Sensitivity <span>3×3 grid</span></li>
+      <li>Return-Solver</li>
+    </ul>
+    <div class="io-foot">167 scored cells</div>
+  </div>
+</div>
+
+<p>The deal:</p>
+
+<ul>
+<li>Series F, $1.4B pre-money (a slight down round). $30M primary plus $15M secondary tender at 0.85× the round PPS.</li>
+<li>Two convertible notes outstanding, mismatched terms. One converts at the cap, the other at the discount-to-PPS. The model has to figure out which.</li>
+<li>Pre-money ESOP refresh to 13% of post-money fully diluted. Coupled into the round PPS as a fixed-point.</li>
+<li>Anti-dilution on Series D and Series E. Both trigger because the new PPS comes in below their original conversion prices.</li>
+<li>Five exit values from $700M to $8B. Conversion election (preference vs convert) as Nash equilibrium across seven priced classes.</li>
+</ul>
+
+<p>We tracked 167 specific output values across pro-forma ownership, anti-dilution ratios, convertible note conversion, waterfall dollars at each exit, sensitivity-grid outputs, and return-solver percentages. Every value was independently re-derived two ways: a Python decimal-arithmetic builder, and a separate openpyxl formula-driven workbook. The two builders had to agree before we accepted truth as canonical.</p>
+
+<p>Then we fired three AI systems at it, ten runs each: <strong>Tetra</strong>, <strong>Opus 4.7</strong>, and <strong>GPT-5.5</strong>. Opus and GPT-5.5 ran on their highest reasoning settings.</p>
+
+<p>We also tested a fourth tool, Shortcut. Excluded from this analysis because its backend failed about 60% of fires (V8 heap crashes, 30-minute poll timeouts, intermittent 502s). We landed n=10 valid runs only after firing 33 attempts. Production diligence work doesn't tolerate that.</p>
+
+<p>Methodology, scoring harness, and reproducibility instructions are open-source: <a href="https://github.com/arthursolwayne/cap-table-bench">github.com/arthursolwayne/cap-table-bench</a>.</p>
+
+<h2>Overall performance</h2>
+
+<table>
+<thead><tr><th>Engine</th><th>Mean strict accuracy</th><th>Range across 10 runs</th></tr></thead>
+<tbody>
+<tr><td><strong>Tetra</strong></td><td><strong>50.06%</strong></td><td>25.7 – 73.1%</td></tr>
+<tr><td>Opus 4.7</td><td>36.58%</td><td>7.2 – 56.9%</td></tr>
+<tr><td>GPT-5.5</td><td>26.90%</td><td>7.8 – 59.3%</td></tr>
+</tbody>
+</table>
+
+<p>Strict accuracy: percentage of the 167 cells that match canonical truth within ≤0.1pp for percentages, ≤0.1% relative for dollars. The threshold is set so passing means an analyst would sign off without independent verification.</p>
+
+<p>No engine breaks 75% on its best run. The deal is hard by design. It's hard the way real Series F modeling is hard: coupled fixed-points, multi-class anti-dilution, hybrid convertibles, secondary tender. The strict tolerance is also tight. 0.1pp on a 19% ownership value is a $5M difference on a $2.5B post-money.</p>
+
+<p>The Tetra-Opus 4.7 gap is 13.5pp. At n=10 each that's directionally robust, statistically borderline (we'd want n=20 each to firm it up). The Tetra-GPT-5.5 gap is 23pp, statistically significant under standard tests (Cohen's d = 1.45, p = 0.019 after multiple-comparisons correction).</p>
+
+<p>What matters more than the absolute numbers is the ratio of accuracy to architecture.</p>
+
+<h2>Time vs accuracy</h2>
+
+<figure>
+<img src="charts/time_vs_accuracy.png" alt="Time vs strict accuracy scatter. Each dot is one run.">
+<figcaption>Each dot is one run. Tetra and Opus 4.7 finish in 17–46 minutes; GPT-5.5's range is wider, sometimes bailing in seconds, sometimes running 24 minutes. The dotted line on the left is SpreadsheetBench's 1.9-minute median for context.</figcaption>
+</figure>
+
+<table>
+<thead><tr><th>Engine</th><th>Mean wall time</th><th>Median</th><th>Range</th></tr></thead>
+<tbody>
+<tr><td>Tetra</td><td>22 min</td><td>21 min</td><td>17–46 min</td></tr>
+<tr><td>Opus 4.7</td><td>25 min</td><td>24 min</td><td>14–40 min</td></tr>
+<tr><td>GPT-5.5</td><td>20 min</td><td>17 min</td><td>5 sec – 24 min</td></tr>
+</tbody>
+</table>
+
+<p>All three engines work on the same problem with the same input. Compute time is comparable. Accuracy is not.</p>
+
+<p>For context: SpreadsheetBench Verified, the public benchmark for spreadsheet agents, averages about 2 minutes per task. Our deal averages 20-25 minutes. Roughly 10-12× the compute, because the deal has 10-12× the structure to construct: 167 coupled cells, multi-class anti-dilution, hybrid convertibles solved as a fixed-point, waterfall election as Nash equilibrium across seven classes.</p>
+
+<p>GPT-5.5's range is the giveaway. The fast tail (5 seconds) means GPT-5.5 sometimes returns a near-empty workbook without doing the work. The slow tail (24 minutes) means GPT-5.5 builds 373,000-formula models. Same compute budget, very different output. We can't cleanly attribute the early-bail behavior to the model versus our integration, so we don't claim it as a reliability number. But it shows up in the strict mean: the bailed runs score near zero, which pulls the average down.</p>
+
+<p>Tetra is the only engine that returns work consistently in the 17–46 minute window. The variance shows up in the accuracy, with every run finishing.</p>
+
+<h2>Audit-readiness</h2>
+
+<p>Accuracy doesn't capture what we care about. The harder question: when the analyst opens the output and changes an assumption, does the model recompute?</p>
+
+<p>We perturbed each engine's output workbook by changing the Series F primary raise from $30M to $33M. We let the workbook recalculate through whatever machinery it supports. We checked which output cells updated to the correct new values.</p>
+
+<table>
+<thead><tr><th>Engine</th><th>Live recompute</th><th>Inputs we could perturb</th></tr></thead>
+<tbody>
+<tr><td><strong>Tetra</strong></td><td><strong>65.6%</strong></td><td>6 / 10 runs</td></tr>
+<tr><td>GPT-5.5</td><td>44.7%</td><td>2 / 10 runs</td></tr>
+<tr><td>Opus 4.7</td><td>38.6%</td><td>0 / 10 runs</td></tr>
+</tbody>
+</table>
+
+<figure>
+<img src="charts/strict_vs_audit_probe.png" alt="Strict accuracy versus audit-probe pass rate. Tetra sits in the auditable zone above the diagonal. Opus 4.7 sits on the diagonal. GPT-5.5 sits in the auditable zone but at lower accuracy.">
+<figcaption>Above the diagonal means the workbook keeps recomputing past the strict-pass threshold. Below it means the values look right but go stale when an input changes.</figcaption>
+</figure>
+
+<p>Opus 4.7's 0 of 10 means: in zero of Opus 4.7's outputs did the input value live as a named or labeled cell we could write to. Opus 4.7 wrote workbooks where the raise existed somewhere in the workbook but wasn't reachable as an addressable input. The 38.6% number is the fraction of cells that happened to be passthrough. Values identical between canonical and perturbed truth that didn't need to recompute.</p>
+
+<p>GPT-5.5 was more interesting. The 373,000 formulas in its outputs aren't actually wired to the boundary inputs. They're wired to internal scratch cells. On the rare runs where we could perturb the raise input, recompute hit ~25%. The elaborate model isn't a live financial model.</p>
+
+<p>Tetra was the only engine where 6 of 10 runs exposed enough of the input boundary to even attempt perturbation. On those runs, recompute was double GPT-5.5's. Every cell traces back to an assumption an analyst can read and modify.</p>
+
+<p>That's audit-readiness. Output behaves like a real Excel model because, structurally, it is one.</p>
+
+<h2>Category-level performance</h2>
+
+<figure>
+<img src="charts/per_category_radar.png" alt="Per-category strict-pass rate radar chart. Tetra's polygon dominates on waterfall_dollars, waterfall_elections, sensitivity, and return-solver. GPT-5.5's polygon is smallest across all categories.">
+<figcaption>Tetra's lead concentrates on waterfall, sensitivity, and return-solver — the categories where structural model construction matters. On simpler primitives, Opus 4.7 is competitive.</figcaption>
+</figure>
+
+<p>The 167 cells split across nine categories. Tetra's lead concentrates on the categories where structural model construction matters: waterfall dollars, waterfall elections, sensitivity grid, return-solver. On simpler primitives like individual ownership percentages, single anti-dilution ratios, and single convertible note conversion, Opus 4.7 is competitive.</p>
+
+<p>Tetra's edge shows up in constructing the model.</p>
+
+<p>That observation is consistent with a separate result we ran on a templated benchmark, where the engine receives an empty workbook with named cells already laid out and fills in values. There, all three engines tied at ~70%. The agent edge largely vanishes when the structure is provided up front. The agent's job is partly to invent the right structure. When the structure is given, the foundation model's reasoning closes the gap.</p>
+
+<h2>Where Tetra doesn't win</h2>
+
+<figure>
+<img src="charts/strict_distribution_v4_vs_v3t1.png" alt="Side-by-side box plots of strict accuracy distributions on the dense from-scratch deal (left) and a templated task (right). Left panel shows clear tier separation. Right panel shows all three engines clustered around 70%.">
+<figcaption>Strict-accuracy distributions on two scenarios at n=10 each. Left: the dense from-scratch deal. Right: a templated task. The agent edge collapses on templates.</figcaption>
+</figure>
+
+<p>We tested four scenarios. This deal is the one Tetra wins decisively. The other three:</p>
+
+<ol>
+<li><strong>Templated tasks</strong> (engine fills an empty workbook with named cells): three-way tie at ~70%. Tetra 71.9%, Opus 4.7 70.3%, GPT-5.5 74.0%.</li>
+<li><strong>Small simple cap tables</strong> (3 rounds, single priced round): Opus 4.7 wins, sometimes by 30 percentage points. The agent has fixed overhead that doesn't pay off when the model fits in a single Python pass.</li>
+<li><strong>Sparse one-sentence prompts</strong>: also inverts. The agent needs structure to scaffold against. Underspecified prompts hurt it more than they hurt raw foundation-model reasoning.</li>
+</ol>
+
+<p>The agent edge is conditional on the regime. Dense, complex, build-from-scratch cap tables are the regime VCs actually live in. This benchmark was designed for that. The other regimes don't need the agent.</p>
+
+<h2>Cross-validation against SpreadsheetBench</h2>
+
+<p>DealGlass's published <a href="https://dealglass.com/tetra">SpreadsheetBench Verified result</a> is 94.25%. 14 percentage points ahead of Anthropic's Opus 4.6 (80.25%) and OpenAI's GPT-5.4 (78.25%). Full leaderboard breakdown on the Tetra page.</p>
+
+<p>Our result reproduces something close to that 14pp gap on a much harder, much more domain-specific scenario. Tetra leads Opus 4.7 by 13.5pp on this benchmark.</p>
+
+<p>Same gap, two independent benchmarks, structurally different task families. The reproducibility is the signal. The absolute numbers differ. 94% on SpreadsheetBench, 50% on our benchmark. The tasks are different. SpreadsheetBench is 400 atomic operations averaging about 2 minutes each. Our benchmark is one dense end-to-end deal model that takes 20-25 minutes.</p>
+
+<p>We built this benchmark to address what SpreadsheetBench doesn't:</p>
+
+<ul>
+<li>SpreadsheetBench tests output values, not live-formula propagation. Audit-probe is our addition.</li>
+<li>SpreadsheetBench's leaderboard headline numbers anchor on Opus 4.6 and GPT-5.4, both an iteration behind production. We tested Opus 4.7 and GPT-5.5.</li>
+<li>SpreadsheetBench tasks are atomic. Our task is end-to-end deal modeling. The structure is what the agent has to invent.</li>
+</ul>
+
+<p>The takeaway from running both: engine ordering holds. What changes on a harder, more domain-specific test is how much harder it becomes to win at all. No engine cracks 75% on our benchmark, even on its best run. That's where AI cap table modeling stands in April 2026.</p>
+
+<h2>Acephalt + DealGlass</h2>
+
+<p>Acephalt is integrating <a href="https://dealglass.com/tetra">Tetra from DealGlass</a> as the spreadsheet engine inside our AI due-diligence product.</p>
+
+<p>What that means for our customers:</p>
+
+<ul>
+<li>Upload a data room. Acephalt parses the documents, builds the underlying models on Tetra, produces audit-ready output the analyst can take ownership of.</li>
+<li>Run multiple deals in parallel. Tetra's reliability profile lets us actually deliver on this. We tried it with the alternatives and we couldn't.</li>
+<li>Every cell traces back. Change an assumption, the model recomputes. The output behaves like a real Excel model because, structurally, it is one.</li>
+</ul>
+
+<p>We tested four AI tools against the cap table modeling problem. Three produce outputs that look like models but don't behave like them. Tetra is the one where the behavior matches the appearance.</p>
+
+<p>For the analyst staring down a real Series F on a real Tuesday, with the principal expecting the model by EOD: that's the difference between shipping it and rebuilding it.</p>
+
+<h2 id="methodology">Methodology and reproducibility</h2>
+
+<p>The benchmark is open-source at <a href="https://github.com/arthursolwayne/cap-table-bench">github.com/arthursolwayne/cap-table-bench</a>. Truth was independently rebuilt twice (Python decimal arithmetic and openpyxl) and reconciled to ≤1e-6 before any run; five skeptical audits caught and fixed eleven measurement bugs before publication; every run's output workbook, score breakdown, and audit-probe result is preserved in the repo. We'd rather someone find a twelfth bug than ship a result we'd retract.</p>
+
+<p>If you're a fund or family office evaluating AI tools for diligence work, we're happy to walk through the methodology in detail.</p>
+
+<div class="footer-note">
+Acephalt builds AI due-diligence tools for venture capital firms and family offices. DealGlass builds <a href="https://dealglass.com/tetra">Tetra</a>, the spreadsheet agent we use for cap table modeling. This benchmark was conducted jointly. Methodology, code, and full result tables are open-source at <a href="https://github.com/arthursolwayne/cap-table-bench">github.com/arthursolwayne/cap-table-bench</a>.
+</div>
+
+</article>
+
+
+<!-- Review-mode UI -->
+<div id="review-bar">
+  <button id="review-toggle">Review mode</button>
+  <span id="count-badge" hidden>0</span>
+  <button id="export-btn" hidden>Export</button>
+  <button id="clear-btn" hidden title="Clear all annotations">Clear</button>
+</div>
+
+<div id="comment-popup">
+  <button data-action="comment">💬 Comment</button>
+  <button data-action="insert">+ Insert</button>
+  <button data-action="delete">– Delete</button>
+</div>
+
+<aside id="comments-sidebar">
+  <h3>Annotations</h3>
+  <div id="comments-list"></div>
+</aside>
+
+<script>
+(function() {
+  const STORAGE_KEY = "blog-annotations-v1";
+  const article = document.querySelector("article");
+  const popup = document.getElementById("comment-popup");
+  const sidebar = document.getElementById("comments-sidebar");
+  const list = document.getElementById("comments-list");
+  const toggleBtn = document.getElementById("review-toggle");
+  const countBadge = document.getElementById("count-badge");
+  const exportBtn = document.getElementById("export-btn");
+  const clearBtn = document.getElementById("clear-btn");
+
+  let reviewOn = false;
+  let annotations = [];
+  let currentSelection = null;
+
+  // -- Storage --
+  function load() {
+    try {
+      annotations = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    } catch (e) { annotations = []; }
+  }
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(annotations));
+    updateCount();
+  }
+  function updateCount() {
+    countBadge.textContent = annotations.length;
+    countBadge.hidden = annotations.length === 0;
+  }
+
+  // -- Selection handling --
+  document.addEventListener("mouseup", function(e) {
+    if (!reviewOn) return;
+    if (e.target.closest("#comment-popup, #review-bar, #comments-sidebar")) return;
+    setTimeout(showPopup, 10);
+  });
+  document.addEventListener("selectionchange", function() {
+    if (!reviewOn) return;
+    const sel = window.getSelection();
+    if (!sel || sel.toString().trim().length < 1) {
+      hidePopup();
+    }
+  });
+
+  function showPopup() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) { hidePopup(); return; }
+    const txt = sel.toString().trim();
+    if (txt.length < 2) { hidePopup(); return; }
+
+    // Make sure selection is inside the article
+    const range = sel.getRangeAt(0);
+    if (!article.contains(range.commonAncestorContainer)) { hidePopup(); return; }
+    if (range.startContainer.parentElement.closest(".anno")) { hidePopup(); return; }
+
+    currentSelection = {
+      range: range.cloneRange(),
+      text: txt,
+    };
+    const rect = range.getBoundingClientRect();
+    popup.style.left = (window.scrollX + rect.left + rect.width / 2 - 90) + "px";
+    popup.style.top = (window.scrollY + rect.top - 50) + "px";
+    popup.classList.add("show");
+  }
+  function hidePopup() {
+    popup.classList.remove("show");
+    currentSelection = null;
+  }
+
+  popup.addEventListener("click", function(e) {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (!currentSelection) return;
+    handleAction(action, currentSelection);
+    hidePopup();
+    window.getSelection().removeAllRanges();
+  });
+
+  function handleAction(action, sel) {
+    let body = "";
+    if (action === "comment") {
+      body = prompt("Comment:");
+      if (body == null) return;
+    } else if (action === "insert") {
+      body = prompt("Insert text (will appear after the selected span as a green suggestion):");
+      if (body == null) return;
+    } else if (action === "delete") {
+      body = prompt("Reason for deletion (optional):") || "";
+    }
+    const id = "anno-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+    const xpath = serializeRange(sel.range);
+    if (!xpath) {
+      alert("Couldn't anchor selection (try selecting plain text without crossing block boundaries).");
+      return;
+    }
+    annotations.push({
+      id: id,
+      type: action,
+      anchor_text: sel.text,
+      anchor_xpath: xpath,
+      body: body,
+      created: Date.now(),
+    });
+    save();
+    renderAnnotation(annotations[annotations.length - 1]);
+    renderSidebar();
+  }
+
+  // Anchor a Range as a path of text-offset descriptors so we can re-find it on reload
+  function serializeRange(range) {
+    function nodePath(node) {
+      const path = [];
+      let n = node;
+      while (n && n !== article) {
+        const parent = n.parentNode;
+        if (!parent) return null;
+        const idx = Array.prototype.indexOf.call(parent.childNodes, n);
+        path.unshift(idx);
+        n = parent;
+      }
+      return path;
+    }
+    const start = nodePath(range.startContainer);
+    const end = nodePath(range.endContainer);
+    if (!start || !end) return null;
+    return JSON.stringify({
+      start: start, startOff: range.startOffset,
+      end: end, endOff: range.endOffset,
+    });
+  }
+  function deserializeRange(xpath) {
+    try {
+      const o = JSON.parse(xpath);
+      function resolve(path) {
+        let n = article;
+        for (const idx of path) {
+          if (!n.childNodes[idx]) return null;
+          n = n.childNodes[idx];
+        }
+        return n;
+      }
+      const startNode = resolve(o.start);
+      const endNode = resolve(o.end);
+      if (!startNode || !endNode) return null;
+      const r = document.createRange();
+      r.setStart(startNode, o.startOff);
+      r.setEnd(endNode, o.endOff);
+      return r;
+    } catch (e) { return null; }
+  }
+
+  function renderAnnotation(a) {
+    const range = deserializeRange(a.anchor_xpath);
+    if (!range) return;
+    try {
+      const span = document.createElement("span");
+      span.className = "anno anno-" + a.type;
+      span.dataset.id = a.id;
+      span.title = a.body || "(no comment)";
+      // Surround range contents
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+      span.addEventListener("click", function(e) {
+        e.stopPropagation();
+        scrollToCommentInSidebar(a.id);
+      });
+    } catch (e) {
+      console.warn("Could not render annotation", a.id, e);
+    }
+  }
+
+  function renderAllAnnotations() {
+    // Clear existing visuals
+    document.querySelectorAll(".anno").forEach(function(span) {
+      const parent = span.parentNode;
+      while (span.firstChild) parent.insertBefore(span.firstChild, span);
+      parent.removeChild(span);
+      parent.normalize();
+    });
+    annotations.forEach(renderAnnotation);
+  }
+
+  function renderSidebar() {
+    list.innerHTML = "";
+    if (annotations.length === 0) {
+      list.innerHTML = '<p style="color: #888; font-size: 13px;">No annotations yet. Toggle review mode and select any text in the article to add comments, suggest insertions, or mark deletions.</p>';
+      return;
+    }
+    annotations.forEach(function(a, idx) {
+      const card = document.createElement("div");
+      card.className = "comment-card";
+      if (a.type === "delete") card.classList.add("delete-card");
+      if (a.type === "insert") card.classList.add("insert-card");
+      const anchor = document.createElement("div");
+      anchor.className = "anchor-text";
+      anchor.textContent = '"' + (a.anchor_text || "").substring(0, 80) + (a.anchor_text.length > 80 ? "…" : "") + '"';
+      const body = document.createElement("p");
+      body.className = "body";
+      const label = a.type === "comment" ? "" : a.type === "insert" ? "+ Insert: " : "– Delete: ";
+      body.textContent = label + (a.body || "(no description)");
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      const editLink = document.createElement("a");
+      editLink.textContent = "Edit";
+      editLink.onclick = function() { editAnnotation(a.id); };
+      const delLink = document.createElement("a");
+      delLink.textContent = "Remove";
+      delLink.onclick = function(e) { e.stopPropagation(); removeAnnotation(a.id); };
+      actions.append(editLink, delLink);
+      card.append(anchor, body, actions);
+      card.addEventListener("click", function() { scrollToAnnotation(a.id); });
+      list.appendChild(card);
+    });
+  }
+
+  function editAnnotation(id) {
+    const a = annotations.find(function(x) { return x.id === id; });
+    if (!a) return;
+    const newBody = prompt("Edit:", a.body);
+    if (newBody == null) return;
+    a.body = newBody;
+    save();
+    renderSidebar();
+    // update title attribute on the span
+    const span = document.querySelector('.anno[data-id="' + id + '"]');
+    if (span) span.title = newBody || "(no comment)";
+  }
+  function removeAnnotation(id) {
+    if (!confirm("Remove this annotation?")) return;
+    annotations = annotations.filter(function(x) { return x.id !== id; });
+    save();
+    renderAllAnnotations();
+    renderSidebar();
+  }
+
+  function scrollToAnnotation(id) {
+    const span = document.querySelector('.anno[data-id="' + id + '"]');
+    if (!span) return;
+    span.scrollIntoView({ behavior: "smooth", block: "center" });
+    span.style.transition = "background 0.3s";
+    const orig = span.style.background;
+    span.style.background = "#ffd700";
+    setTimeout(function() { span.style.background = orig; }, 800);
+  }
+  function scrollToCommentInSidebar(id) {
+    if (!sidebar.classList.contains("open")) return;
+    const idx = annotations.findIndex(function(x) { return x.id === id; });
+    if (idx < 0) return;
+    const card = list.children[idx];
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.style.boxShadow = "0 0 0 3px #1f77b4";
+      setTimeout(function() { card.style.boxShadow = ""; }, 1200);
+    }
+  }
+
+  // -- Review-mode toggle --
+  toggleBtn.addEventListener("click", function() {
+    reviewOn = !reviewOn;
+    document.body.classList.toggle("review-on", reviewOn);
+    toggleBtn.classList.toggle("active", reviewOn);
+    toggleBtn.textContent = reviewOn ? "Done reviewing" : "Review mode";
+    sidebar.classList.toggle("open", reviewOn);
+    exportBtn.hidden = !reviewOn;
+    clearBtn.hidden = !reviewOn;
+    if (!reviewOn) hidePopup();
+  });
+
+  // -- Export --
+  exportBtn.addEventListener("click", function() {
+    const out = annotations.map(function(a, i) {
+      return (i + 1) + ". [" + a.type + "] \"" + a.anchor_text + "\"\n   → " + (a.body || "(no description)");
+    }).join("\n\n");
+    const blob = new Blob([out + "\n\n--- Raw JSON ---\n" + JSON.stringify(annotations, null, 2)], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "blog-annotations-" + new Date().toISOString().slice(0, 10) + ".txt";
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // -- Clear --
+  clearBtn.addEventListener("click", function() {
+    if (!confirm("Remove all " + annotations.length + " annotations? This cannot be undone.")) return;
+    annotations = [];
+    save();
+    renderAllAnnotations();
+    renderSidebar();
+  });
+
+  // Hide popup on outside click
+  document.addEventListener("click", function(e) {
+    if (!popup.contains(e.target)) hidePopup();
+  }, true);
+
+  // -- Init --
+  load();
+  renderAllAnnotations();
+  renderSidebar();
+  updateCount();
+})();
+</script>
+
+</body>
+</html>
